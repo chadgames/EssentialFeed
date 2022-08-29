@@ -38,7 +38,7 @@ class RemoteFeedLoaderTests: XCTestCase {
     func test_load_deliversErrorOnClientError() {
         let (sut, client) = makeSUT()
         
-        expect(sut: sut, toCompleteWithResult: .failure(.connectivity), when: {
+        expect(sut: sut, toCompleteWith: failure(.connectivity), when: {
             let clientError = NSError(domain: "Test", code: 0)
             client.complete(with: clientError, at: 0)
         })
@@ -50,7 +50,7 @@ class RemoteFeedLoaderTests: XCTestCase {
         let samples = [199, 201, 300, 400, 500].enumerated()
         
         samples.forEach({ index, sample in
-            expect(sut: sut, toCompleteWithResult: .failure(.invalidData), when: {
+            expect(sut: sut, toCompleteWith: failure(.invalidData), when: {
                 let data = makeItemsJSON([])
                 client.complete(withStatusCode: sample, data: data, at: index)
             })
@@ -60,7 +60,7 @@ class RemoteFeedLoaderTests: XCTestCase {
     func test_load_deliversErrorOnNon200HTTPResponse_withInvalidJSON() {
         let (sut, client) = makeSUT()
         
-        expect(sut: sut, toCompleteWithResult: .failure(.invalidData), when: {
+        expect(sut: sut, toCompleteWith: failure(.invalidData), when: {
             let invalidJSON = "invalid json".data(using: .utf8)!
             client.complete(withStatusCode: 200, data: invalidJSON)
         })
@@ -69,7 +69,7 @@ class RemoteFeedLoaderTests: XCTestCase {
     func test_load_deliversNoItemsOn200HTTPResponse_withEmptyJSONList() {
         let (sut, client) = makeSUT()
         
-        expect(sut: sut, toCompleteWithResult: .success([]), when: {
+        expect(sut: sut, toCompleteWith: .success([]), when: {
             let emptyListJson = makeItemsJSON([])
             
             client.complete(withStatusCode: 200, data: emptyListJson)
@@ -89,7 +89,7 @@ class RemoteFeedLoaderTests: XCTestCase {
                                  location: "location",
                                  imageURL: URL(string: "http://a-url.com")!)
         
-        expect(sut: sut, toCompleteWithResult: .success([feedItem1.model, feedItem2.model]), when: {
+        expect(sut: sut, toCompleteWith: .success([feedItem1.model, feedItem2.model]), when: {
             let json = makeItemsJSON([feedItem1.json, feedItem2.json])
             client.complete(withStatusCode: 200, data: json)
         })
@@ -120,6 +120,10 @@ class RemoteFeedLoaderTests: XCTestCase {
         trackForMemoryLeaks(client, file: file, line: line)
         
         return (sut, client)
+    }
+    
+    private func failure(_ error: RemoteFeedLoader.Error) -> RemoteFeedLoader.Result {
+        return .failure(error)
     }
     
     private func trackForMemoryLeaks(_ instance: AnyObject, file: StaticString = #filePath, line: UInt = #line) {
@@ -156,14 +160,28 @@ class RemoteFeedLoaderTests: XCTestCase {
         return try! JSONSerialization.data(withJSONObject: json)
     }
     
-    private func expect(sut: RemoteFeedLoader, toCompleteWithResult result: RemoteFeedLoader.Result, when action: () -> Void, file: StaticString = #filePath, line: UInt = #line) {
+    private func expect(sut: RemoteFeedLoader, toCompleteWith expectedResult: RemoteFeedLoader.Result, when action: () -> Void, file: StaticString = #filePath, line: UInt = #line) {
         
-        var capturedResults = [RemoteFeedLoader.Result]()
-        sut.load { capturedResults.append($0) }
+        let expectation = expectation(description: "Wait for load completion")
+        
+        sut.load { receivedResult in
+            switch (receivedResult, expectedResult) {
+            case let (.success(receivedItems), .success(expectedItems)):
+                XCTAssertEqual(receivedItems, expectedItems, file: file, line: line)
+                
+            case let (.failure(receivedError as RemoteFeedLoader.Error), .failure(expectedError as RemoteFeedLoader.Error)):
+                XCTAssertEqual(receivedError, expectedError, file: file, line: line)
+                
+            default:
+                XCTFail("Expected \(expectedResult) but got \(receivedResult)", file: file, line: line)
+            }
+            
+            expectation.fulfill()
+        }
         
         action()
         
-        XCTAssertEqual(capturedResults, [result], file: file, line: line)
+        wait(for: [expectation], timeout: 1.0)
     }
     
     class HTTPClientSpy: HTTPClient {
