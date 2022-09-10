@@ -1,0 +1,20 @@
+name: Xcodebuild Action
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: sersoft-gmbh/xcodebuild-action@v2.0
+        with:
+          project: MyApp.xcodeproj
+          scheme: MyApp
+          destination: platform=macOS
+          action: test
