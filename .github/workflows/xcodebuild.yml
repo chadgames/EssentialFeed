@@ -16,7 +16,7 @@ jobs:
       - name: Xcodebuild Action
         uses: sersoft-gmbh/xcodebuild-action@v2.0
         with:
-          project: /EssentialFeed/EssentialFeed.xcodeproj
+          project: ./EssentialFeed.xcodeproj
           scheme: CI
           destination: platform=macOS
           action: test
