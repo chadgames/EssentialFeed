@@ -13,8 +13,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          xcode-version: '13.4.1'
+      - name: Xcodebuild Action
         uses: sersoft-gmbh/xcodebuild-action@v2.0
         with:
           project: /EssentialFeed/EssentialFeed.xcodeproj
