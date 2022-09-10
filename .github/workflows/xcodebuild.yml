@@ -12,9 +12,12 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - uses: sersoft-gmbh/xcodebuild-action@v2.0
+      - uses: actions/checkout@v3
         with:
-          project: /EssentialFeed/EssentialFeed.xcodeproj
-          scheme: CI
-          destination: platform=macOS
-          action: test
+          xcode-version: '13.4.1'
+        uses: sersoft-gmbh/xcodebuild-action@v2.0
+          with:
+            project: /EssentialFeed/EssentialFeed.xcodeproj
+            scheme: CI
+            destination: platform=macOS
+            action: test
